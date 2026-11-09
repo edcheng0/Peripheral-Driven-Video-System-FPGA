@@ -1,23 +1,25 @@
 # OV7670 camera on Zybo Z7-20 Pmod headers JC (8 data bits) and JD (control).
-# DRAFT wiring plan - nothing is plugged in yet; change freely before wiring.
-# FPGA pins/banks come from Digilent's master XDC (all in bank 34, 3.3 V).
-# Physical Pmod pin numbers (1-4 top row, 7-10 bottom row, 5/11 GND, 6/12 3V3)
-# are NOT yet checked against the Zybo Z7 reference manual: do that before wiring.
+# Pmod pin numbers and FPGA pins checked against the Digilent Zybo Z7 reference
+# manual Pmod table (verified by Evan, 2026-11-06). Pmod pins: 1-4 top row,
+# 7-10 bottom row, 5 and 11 = GND, 6 and 12 = 3.3 V. Banks are 3.3 V.
 #
-#   header-name  FPGA  camera signal            header-name  FPGA  camera signal
-#   jc[0]        V15   D0                       jd[0]        T14   VSYNC
-#   jc[1]        W15   D1                       jd[1]        T15   HREF
-#   jc[2]        T11   D2                       jd[2]        P14   XCLK (FPGA -> camera)
-#   jc[3]        T10   D3                       jd[3]        R14   RESET# (FPGA -> camera)
-#   jc[4]        W14   D4                       jd[4]        U14   PCLK (clock-capable pin)
-#   jc[5]        Y14   D5                       jd[5]        U15   PWDN (FPGA -> camera)
-#   jc[6]        T12   D6                       jd[6]        V17   SIOC (SCCB clock)
-#   jc[7]        U12   D7                       jd[7]        V18   SIOD (SCCB data, open-drain)
+#   camera pin  signal        Zybo Pmod pin   FPGA pin
+#   D0..D7      cam_d[0..7]   JC 1,2,3,4,7,8,9,10   V15 W15 T11 T10 W14 Y14 T12 U12
+#   VS          cam_vsync     JD 1            T14
+#   HS          cam_href      JD 2            T15
+#   MCLK        cam_xclk      JD 3            P14   (FPGA -> camera clock)
+#   RET         cam_reset_n   JD 4            R14
+#   PCLK        cam_pclk      JD 7            U14   (clock-capable pin)
+#   PWDN        cam_pwdn      JD 8            U15
+#   SCL         cam_sioc      JD 9            V17
+#   SDA         cam_siod      JD 10           V18
+#   3V3         -             JD 6  (3.3 V)
+#   GND         -             JD 5  (GND)
 #
-# Camera module power: 3.3 V and GND from a Pmod power pin pair (check your
-# breakout's voltage rating). Some OV7670 boards want 2.8 V logic - check.
-# Source: Digilent "Zybo-Z7-Master.xdc" (github.com/Digilent/digilent-xdc), fetched 2026-11-04.
-# Pin names/numbers copied from that file; comments here are on their own lines (Tcl rule).
+# Camera module logic voltage still to be confirmed from its datasheet.
+# Source of FPGA pin names: Digilent "Zybo-Z7-Master.xdc".
+#
+# Pin assignments and timing constraints
 set_property -dict { PACKAGE_PIN V15 IOSTANDARD LVCMOS33 } [get_ports { cam_d[0] }]
 set_property -dict { PACKAGE_PIN W15 IOSTANDARD LVCMOS33 } [get_ports { cam_d[1] }]
 set_property -dict { PACKAGE_PIN T11 IOSTANDARD LVCMOS33 } [get_ports { cam_d[2] }]
@@ -52,3 +54,7 @@ set_input_delay -clock cam_pclk -min 15.0 [get_ports { cam_d[*] cam_vsync cam_hr
 # the only crossings are the mode switch (2-FF synchronizer) and the dual-clock
 # frame buffer.
 set_clock_groups -asynchronous     -group [get_clocks cam_pclk]     -group [get_clocks -include_generated_clocks sys_clk_pin]
+
+# Unwired data pins read as 0 instead of floating (lets a partly wired camera still be tested).
+# Harmless when the camera drives them.
+set_property PULLDOWN true [get_ports { cam_d[*] }]

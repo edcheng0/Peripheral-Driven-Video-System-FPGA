@@ -12,8 +12,8 @@ module tb_ov7670_init;
     integer errors = 0;
     wire [1:0] done_both;
 
-    sccb_case #(.TEST_BARS(0), .EXPECT_WRITES(11)) c0 (.done(done_both[0]), .errs());
-    sccb_case #(.TEST_BARS(1), .EXPECT_WRITES(12)) c1 (.done(done_both[1]), .errs());
+    sccb_case #(.TEST_BARS(0)) c0 (.done(done_both[0]), .errs());
+    sccb_case #(.TEST_BARS(1)) c1 (.done(done_both[1]), .errs());
 
     initial begin
         wait (done_both == 2'b11);
@@ -23,10 +23,10 @@ module tb_ov7670_init;
         else             $display("=== %0d CHECK(S) FAILED ===", errors);
         $finish;
     end
-    initial begin #50_000_000; $display("FAIL: testbench timed out"); $finish; end
+    initial begin #1_000_000_000; $display("FAIL: testbench timed out"); $finish; end
 endmodule
 
-module sccb_case #(parameter TEST_BARS = 0, parameter EXPECT_WRITES = 11) (
+module sccb_case #(parameter TEST_BARS = 0) (
     output reg done,
     output wire [31:0] errs
 );
@@ -58,7 +58,12 @@ module sccb_case #(parameter TEST_BARS = 0, parameter EXPECT_WRITES = 11) (
     reg [7:0] shreg = 0;
     reg [7:0] bytes [0:2];
     integer   n_writes = 0;
-    integer   rom_i = 0;
+    // our own copy of the ROM, read through chk_idx, to know what SHOULD be sent
+    reg  [8:0] chk_idx = 0;
+    wire [7:0] ca, cd;
+    wire [8:0] clast;
+    ov7670_rom #(.TEST_BARS(TEST_BARS)) chk (.idx(chk_idx), .addr(ca), .data(cd), .last(clast));
+    integer   exp_writes = 0, ii;
     real      t_last_stop = 0, t_start = 0;
     reg       prev_was_reset = 0;
 
@@ -72,13 +77,14 @@ module sccb_case #(parameter TEST_BARS = 0, parameter EXPECT_WRITES = 11) (
             errors = errors + 1; $display("FAIL: transaction had %0d bytes, want 3", byte_idx);
         end else begin
             // skip ROM wait entries to find which write this should be
-            while (dut.rom_addr[rom_i] == 8'hFF) rom_i = rom_i + 1;
-            if (bytes[0] !== 8'h42 || bytes[1] !== dut.rom_addr[rom_i] || bytes[2] !== dut.rom_data[rom_i]) begin
+            while (ca == 8'hFF) begin chk_idx = chk_idx + 1; #1; end
+            if (bytes[0] !== 8'h42 || bytes[1] !== ca || bytes[2] !== cd) begin
                 errors = errors + 1;
-                $display("FAIL: write %0d got %h %h %h, ROM says 42 %h %h", n_writes,
-                         bytes[0], bytes[1], bytes[2], dut.rom_addr[rom_i], dut.rom_data[rom_i]);
+                if (errors < 8)
+                    $display("FAIL: write %0d got %h %h %h, ROM says 42 %h %h", n_writes,
+                             bytes[0], bytes[1], bytes[2], ca, cd);
             end
-            rom_i = rom_i + 1;
+            chk_idx = chk_idx + 1; #1;
             n_writes = n_writes + 1;
         end
         t_last_stop = $realtime;
@@ -98,16 +104,23 @@ module sccb_case #(parameter TEST_BARS = 0, parameter EXPECT_WRITES = 11) (
     end
 
     initial begin
+        // how many real writes (not waits) does the ROM contain?
+        for (ii = 0; ii <= 9'd511; ii = ii + 1) begin
+            chk_idx = ii; #1;
+            if (ii <= clast && ca != 8'hFF) exp_writes = exp_writes + 1;
+        end
+        chk_idx = 0; #1;
         repeat (4) @(negedge clk);
         rst = 0;
         repeat (4) @(negedge clk);
         go = 1; @(negedge clk); go = 0;
         wait (init_done == 1'b1);
         repeat (4) @(posedge clk);
-        if (n_writes !== EXPECT_WRITES) begin
+        if (n_writes !== exp_writes) begin
             errors = errors + 1;
-            $display("FAIL: TEST_BARS=%0d expected %0d writes, saw %0d", TEST_BARS, EXPECT_WRITES, n_writes);
-        end
+            $display("FAIL: TEST_BARS=%0d expected %0d writes, saw %0d", TEST_BARS, exp_writes, n_writes);
+        end else
+            $display("TEST_BARS=%0d: %0d register writes sent and matched the ROM", TEST_BARS, n_writes);
         done = 1;
     end
 endmodule

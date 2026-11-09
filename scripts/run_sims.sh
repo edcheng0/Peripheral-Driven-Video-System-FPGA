@@ -17,7 +17,7 @@ TESTS=(
   "tb_tmds_encoder|rtl/tmds_encoder.v"
   "tb_i2c_master|rtl/i2c_master.v"
   "tb_cam_to_display|rtl/ov7670_capture.v rtl/rgb565_to_gray.v rtl/sobel_3x3.v rtl/frame_buffer.v rtl/pixel_reader.v rtl/cam_to_display.v rtl/video_timing_gen.v"
-  "tb_ov7670_init|rtl/i2c_master.v rtl/ov7670_init.v"
+  "tb_ov7670_init|rtl/i2c_master.v rtl/ov7670_rom.v rtl/ov7670_init.v"
   "tb_servo_pwm|rtl/servo_pwm.v"
 )
 
