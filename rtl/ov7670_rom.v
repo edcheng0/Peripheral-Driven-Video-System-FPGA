@@ -3,7 +3,8 @@
 // ov7670_rom.v - GENERATED FILE (do not edit by hand).
 //
 // OV7670 register sequence: soft reset, OmniVision default settings, then
-// QVGA (320x240) + RGB565 output. Register addresses/values are taken from the
+// QVGA (320x240, QVGA=1) or VGA (640x480, QVGA=0) + RGB565 output. Register
+// addresses/values are taken from the
 // open-source Linux V4L2 OV7670 driver (drivers/media/i2c/ov7670.c), whose
 // default table is documented there as obtained from OmniVision. Only the
 // register numbers/values are used here; the sequence is assembled by a script.
@@ -11,7 +12,7 @@
 // Last entry (TEST_BARS=1 only): SCALING_YSC bit 7 = 8-bar color test pattern.
 // Not checked against the OmniVision datasheet PDF (could not read it).
 // ----------------------------------------------------------------------
-module ov7670_rom #(parameter TEST_BARS = 0) (
+module ov7670_rom #(parameter TEST_BARS = 0, parameter QVGA = 1) (
     input  wire [8:0] idx,
     output reg  [7:0] addr,
     output reg  [7:0] data,
@@ -179,7 +180,7 @@ module ov7670_rom #(parameter TEST_BARS = 0) (
             9'd156: begin addr = 8'h79; data = 8'h05; end
             9'd157: begin addr = 8'hC8; data = 8'h30; end
             9'd158: begin addr = 8'h79; data = 8'h26; end
-            9'd159: begin addr = 8'h12; data = 8'h14; end
+            9'd159: begin addr = 8'h12; data = QVGA ? 8'h14 : 8'h04; end
             9'd160: begin addr = 8'h8C; data = 8'h00; end
             9'd161: begin addr = 8'h04; data = 8'h00; end
             9'd162: begin addr = 8'h40; data = 8'h10; end
@@ -192,12 +193,12 @@ module ov7670_rom #(parameter TEST_BARS = 0) (
             9'd169: begin addr = 8'h54; data = 8'hE4; end
             9'd170: begin addr = 8'h3D; data = 8'hC0; end
             9'd171: begin addr = 8'h15; data = 8'h00; end
-            9'd172: begin addr = 8'h17; data = 8'h15; end
-            9'd173: begin addr = 8'h18; data = 8'h03; end
-            9'd174: begin addr = 8'h32; data = 8'h80; end
-            9'd175: begin addr = 8'h19; data = 8'h03; end
-            9'd176: begin addr = 8'h1A; data = 8'h7B; end
-            9'd177: begin addr = 8'h03; data = 8'h00; end
+            9'd172: begin addr = 8'h17; data = QVGA ? 8'h15 : 8'h13; end
+            9'd173: begin addr = 8'h18; data = QVGA ? 8'h03 : 8'h01; end
+            9'd174: begin addr = 8'h32; data = QVGA ? 8'h80 : 8'hB6; end
+            9'd175: begin addr = 8'h19; data = QVGA ? 8'h03 : 8'h02; end
+            9'd176: begin addr = 8'h1A; data = QVGA ? 8'h7B : 8'h7A; end
+            9'd177: begin addr = 8'h03; data = QVGA ? 8'h00 : 8'h0A; end
             9'd178: begin addr = 8'h11; data = 8'h01; end
             9'd179: begin addr = 8'h71; data = 8'hB5; end
             default: begin addr = 8'hFF; data = 8'h00; end

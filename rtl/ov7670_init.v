@@ -26,7 +26,8 @@
 //------------------------------------------------------------------------
 module ov7670_init #(
     parameter integer DELAY_CYCLES = 1_250_000,  // 10 ms at 125 MHz
-    parameter         TEST_BARS    = 0
+    parameter         TEST_BARS    = 0,
+    parameter         QVGA         = 1     // 1 = 320x240, 0 = 640x480
 ) (
     input  wire clk,
     input  wire rst,
@@ -47,7 +48,7 @@ module ov7670_init #(
     reg  [8:0] idx = 0;
     wire [7:0] rom_addr, rom_data;
     wire [8:0] last;
-    ov7670_rom #(.TEST_BARS(TEST_BARS)) u_rom (
+    ov7670_rom #(.TEST_BARS(TEST_BARS), .QVGA(QVGA)) u_rom (
         .idx(idx), .addr(rom_addr), .data(rom_data), .last(last)
     );
 

@@ -10,15 +10,16 @@
 // ----------------------------------------------------------------------
 module tb_ov7670_init;
     integer errors = 0;
-    wire [1:0] done_both;
+    wire [2:0] done_both;
 
     sccb_case #(.TEST_BARS(0)) c0 (.done(done_both[0]), .errs());
     sccb_case #(.TEST_BARS(1)) c1 (.done(done_both[1]), .errs());
+    sccb_case #(.TEST_BARS(0), .QVGA(0)) c2 (.done(done_both[2]), .errs());
 
     initial begin
-        wait (done_both == 2'b11);
+        wait (done_both == 3'b111);
         #1000;
-        errors = c0.errors + c1.errors;
+        errors = c0.errors + c1.errors + c2.errors;
         if (errors == 0) $display("=== ALL CHECKS PASSED ===");
         else             $display("=== %0d CHECK(S) FAILED ===", errors);
         $finish;
@@ -26,7 +27,7 @@ module tb_ov7670_init;
     initial begin #1_000_000_000; $display("FAIL: testbench timed out"); $finish; end
 endmodule
 
-module sccb_case #(parameter TEST_BARS = 0) (
+module sccb_case #(parameter TEST_BARS = 0, parameter QVGA = 1) (
     output reg done,
     output wire [31:0] errs
 );
@@ -42,7 +43,7 @@ module sccb_case #(parameter TEST_BARS = 0) (
     wire sda;
     pullup(sda);
 
-    ov7670_init #(.DELAY_CYCLES(DLY), .TEST_BARS(TEST_BARS)) dut (
+    ov7670_init #(.DELAY_CYCLES(DLY), .TEST_BARS(TEST_BARS), .QVGA(QVGA)) dut (
         .clk(clk), .rst(rst), .go(go), .init_done(init_done),
         .i2c_start(i2c_start), .i2c_dev_addr(dev), .i2c_reg_addr(ra), .i2c_reg_data(rd),
         .i2c_busy(i2c_busy), .i2c_done(i2c_done));
@@ -62,7 +63,7 @@ module sccb_case #(parameter TEST_BARS = 0) (
     reg  [8:0] chk_idx = 0;
     wire [7:0] ca, cd;
     wire [8:0] clast;
-    ov7670_rom #(.TEST_BARS(TEST_BARS)) chk (.idx(chk_idx), .addr(ca), .data(cd), .last(clast));
+    ov7670_rom #(.TEST_BARS(TEST_BARS), .QVGA(QVGA)) chk (.idx(chk_idx), .addr(ca), .data(cd), .last(clast));
     integer   exp_writes = 0, ii;
     real      t_last_stop = 0, t_start = 0;
     reg       prev_was_reset = 0;
@@ -120,7 +121,7 @@ module sccb_case #(parameter TEST_BARS = 0) (
             errors = errors + 1;
             $display("FAIL: TEST_BARS=%0d expected %0d writes, saw %0d", TEST_BARS, exp_writes, n_writes);
         end else
-            $display("TEST_BARS=%0d: %0d register writes sent and matched the ROM", TEST_BARS, n_writes);
+            $display("TEST_BARS=%0d QVGA=%0d: %0d register writes sent and matched the ROM", TEST_BARS, QVGA, n_writes);
         done = 1;
     end
 endmodule

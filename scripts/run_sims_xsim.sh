@@ -41,6 +41,9 @@ run tb_i2c_master       tb_i2c_master       plain "" rtl/i2c_master.v
 run tb_cam_to_display   tb_cam_to_display   plain "" rtl/ov7670_capture.v rtl/rgb565_to_gray.v rtl/sobel_3x3.v rtl/frame_buffer.v rtl/pixel_reader.v rtl/cam_to_display.v rtl/video_timing_gen.v
 run tb_ov7670_init      tb_ov7670_init      plain "" rtl/i2c_master.v rtl/ov7670_rom.v rtl/ov7670_init.v
 run tb_servo_pwm        tb_servo_pwm        plain "" rtl/servo_pwm.v
+run tb_axis_video_out   tb_axis_video_out   plain "" rtl/axis_video_out.v rtl/video_timing_gen.v
+run tb_cam_axis_bridge  tb_cam_axis_bridge  plain "" rtl/cam_axis_bridge.v rtl/ov7670_capture.v
+run tb_display_filter   tb_display_filter   plain "" rtl/display_filter.v rtl/sobel_3x3.v rtl/video_timing_gen.v
 
 run tb_video_clocks     tb_video_clocks     unisim "" rtl/video_clocks.v
 run tb_tmds_serializer  tb_tmds_serializer  unisim "" rtl/tmds_serializer.v

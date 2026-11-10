@@ -21,7 +21,8 @@
 //------------------------------------------------------------------------
 module i2c_master #(
     parameter integer CLK_FREQ_HZ = 50_000_000,
-    parameter integer I2C_FREQ_HZ = 100_000   // standard-mode I2C
+    parameter integer I2C_FREQ_HZ = 100_000,  // standard-mode I2C
+    parameter integer EXT_SDA     = 0         // 1 = use sda_in_ext / sda_drive_low_o with an external I/O buffer
 ) (
     input  wire       clk,
     input  wire        rst,
@@ -34,8 +35,11 @@ module i2c_master #(
     output reg         ack_error,
 
     output reg         scl,
-    inout  wire        sda
+    inout  wire        sda,
+    input  wire        sda_in_ext,        // SDA level from an external buffer (EXT_SDA = 1)
+    output wire        sda_drive_low_o    // 1 = SDA should be pulled low (EXT_SDA = 1)
 );
+    wire sda_sample;
 
     // ---- FSM state names and register ----
     // Declared before the phase counter below, which reads "state"
@@ -87,6 +91,8 @@ module i2c_master #(
     // ---- SDA tri-state control ----
     reg sda_drive_low; // 1 = actively pull SDA low; 0 = release (pulled high externally)
     assign sda = sda_drive_low ? 1'b0 : 1'bz;
+    assign sda_drive_low_o = sda_drive_low;
+    assign sda_sample = (EXT_SDA != 0) ? sda_in_ext : sda;
 
     // ---- Main FSM (state/S_IDLE are declared near the top of the module) ----
     reg [7:0] shift_byte;
@@ -152,7 +158,7 @@ module i2c_master #(
                             0: sda_drive_low <= 1'b0; // release SDA so slave can ACK
                             2: scl <= 1'b1;            // 9th clock pulse: SCL high for the ACK bit
                             3: begin
-                                ack_error <= sda;       // sample: slave pulls low = ACK (0)
+                                ack_error <= sda_sample;       // sample: slave pulls low = ACK (0)
                                 scl <= 1'b0;
                                 shift_byte <= reg_addr;
                                 bit_index  <= 7;
@@ -184,7 +190,7 @@ module i2c_master #(
                             0: sda_drive_low <= 1'b0;
                             2: scl <= 1'b1;            // 9th clock pulse for the ACK bit
                             3: begin
-                                ack_error <= ack_error | sda;
+                                ack_error <= ack_error | sda_sample;
                                 scl <= 1'b0;
                                 shift_byte <= reg_data;
                                 bit_index  <= 7;
@@ -216,7 +222,7 @@ module i2c_master #(
                             0: sda_drive_low <= 1'b0;
                             2: scl <= 1'b1;            // 9th clock pulse for the ACK bit
                             3: begin
-                                ack_error <= ack_error | sda;
+                                ack_error <= ack_error | sda_sample;
                                 scl <= 1'b0;
                                 state <= S_STOP;
                             end

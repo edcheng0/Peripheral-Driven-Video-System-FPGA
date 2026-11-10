@@ -49,7 +49,9 @@ NR == FNR {
 }
 
 # ---- pass 2: tables ----
-function add(a, d) { na++; A[na] = a; D[na] = d }
+function add(a, d) { na++; A[na] = a; D[na] = d; ALT[na] = 0 }
+# addq: value depends on the QVGA parameter (dq when QVGA=1, dv when QVGA=0)
+function addq(a, dq, dv) { na++; A[na] = a; D[na] = dq; ALTV[na] = dv; ALT[na] = 1 }
 
 function parse_table(first_skip_com7,   line, s, e, ent, c, ra, rv, ok) {
     line = strip($0)
@@ -78,14 +80,14 @@ END {
         if (DA[i] == 18 && DV[i] == 128) continue       # skip the driver's own reset
         add(DA[i], DV[i])
     }
-    add(18, or(ev("COM7_RGB"), ev("COM7_FMT_QVGA")))    # COM7: RGB + QVGA
+    addq(18, or(ev("COM7_RGB"), ev("COM7_FMT_QVGA")), ev("COM7_RGB"))    # COM7: RGB, +QVGA bit if QVGA
     for (i = 2; i <= nrgb; i++) add(RA[i], RV[i])       # RGB565 settings (first entry was COM7)
     add(21, 0)                                           # COM10: default sync polarity
     # window for QVGA: hstart 168 hstop 24 vstart 12 vstop 492 (driver values)
-    add(23, 168 / 8); add(24, 24 / 8)                    # HSTART, HSTOP
-    add(50, 128)                                         # HREF  (0x80 | hstop low | hstart low = 0x80)
-    add(25, 12 / 4);  add(26, 492 / 4)                   # VSTART, VSTOP
-    add(3, 0)                                            # VREF  (vstop/vstart low bits = 0)
+    addq(23, 168 / 8, 158 / 8); addq(24, 24 / 8, 14 / 8)  # HSTART, HSTOP  (QVGA / VGA driver values)
+    addq(50, 128, 182)                                    # HREF  (QVGA 0x80 / VGA 0xB6)
+    addq(25, 12 / 4, 10 / 4); addq(26, 492 / 4, 490 / 4)  # VSTART, VSTOP
+    addq(3, 0, 10)                                        # VREF  (QVGA 0x00 / VGA 0x0A)
     add(17, 1)                                           # CLKRC: 1 = PCLK is XCLK/2 (rewritten last, per driver)
     nbase = na
     add(113, or(ev("0x35"), 128))                        # SCALING_YSC | test pattern bit = 8-bar color bar
@@ -95,7 +97,8 @@ END {
     print "// ov7670_rom.v - GENERATED FILE (do not edit by hand)."
     print "//"
     print "// OV7670 register sequence: soft reset, OmniVision default settings, then"
-    print "// QVGA (320x240) + RGB565 output. Register addresses/values are taken from the"
+    print "// QVGA (320x240, QVGA=1) or VGA (640x480, QVGA=0) + RGB565 output. Register"
+    print "// addresses/values are taken from the"
     print "// open-source Linux V4L2 OV7670 driver (drivers/media/i2c/ov7670.c), whose"
     print "// default table is documented there as obtained from OmniVision. Only the"
     print "// register numbers/values are used here; the sequence is assembled by a script."
@@ -103,7 +106,7 @@ END {
     print "// Last entry (TEST_BARS=1 only): SCALING_YSC bit 7 = 8-bar color test pattern."
     print "// Not checked against the OmniVision datasheet PDF (could not read it)."
     print "// ----------------------------------------------------------------------"
-    print "module ov7670_rom #(parameter TEST_BARS = 0) ("
+    print "module ov7670_rom #(parameter TEST_BARS = 0, parameter QVGA = 1) ("
     print "    input  wire [8:0] idx,"
     print "    output reg  [7:0] addr,"
     print "    output reg  [7:0] data,"
@@ -112,8 +115,12 @@ END {
     printf "    assign last = TEST_BARS ? 9'd%d : 9'd%d;\n", nbase, nbase - 1
     print "    always @(*) begin"
     print "        case (idx)"
-    for (i = 1; i <= na; i++)
-        printf "            9'd%d: begin addr = 8'h%02X; data = 8'h%02X; end\n", i - 1, A[i], D[i]
+    for (i = 1; i <= na; i++) {
+        if (ALT[i])
+            printf "            9'd%d: begin addr = 8'h%02X; data = QVGA ? 8'h%02X : 8'h%02X; end\n", i - 1, A[i], D[i], ALTV[i]
+        else
+            printf "            9'd%d: begin addr = 8'h%02X; data = 8'h%02X; end\n", i - 1, A[i], D[i]
+    }
     print "            default: begin addr = 8'hFF; data = 8'h00; end"
     print "        endcase"
     print "    end"

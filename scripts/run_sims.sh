@@ -19,6 +19,9 @@ TESTS=(
   "tb_cam_to_display|rtl/ov7670_capture.v rtl/rgb565_to_gray.v rtl/sobel_3x3.v rtl/frame_buffer.v rtl/pixel_reader.v rtl/cam_to_display.v rtl/video_timing_gen.v"
   "tb_ov7670_init|rtl/i2c_master.v rtl/ov7670_rom.v rtl/ov7670_init.v"
   "tb_servo_pwm|rtl/servo_pwm.v"
+  "tb_axis_video_out|rtl/axis_video_out.v rtl/video_timing_gen.v"
+  "tb_cam_axis_bridge|rtl/cam_axis_bridge.v rtl/ov7670_capture.v"
+  "tb_display_filter|rtl/display_filter.v rtl/sobel_3x3.v rtl/video_timing_gen.v"
 )
 
 fail=0
