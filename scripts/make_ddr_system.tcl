@@ -7,7 +7,7 @@
 #
 # The VDMA is Xilinx's video DMA block: it moves whole frames between a
 # stream and memory without the processor touching the pixels.
-# Frame store: 1 buffer, no genlock (simple; the picture can tear slightly).
+# Frame stores: 3 buffers with internal genlock (writer is master, reader follows) so the picture does not tear.
 #
 # Needs Digilent's board files (see make_ps_hello.tcl).
 # Run from the repo root:
@@ -38,8 +38,8 @@ set_property -dict [list CONFIG.PCW_USE_S_AXI_HP0 {1}] [get_bd_cells ps7]
 # ---- video DMA: 16-bit RGB565 streams, 64-bit memory side, one frame store ----
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vdma axi_vdma_0
 set_property -dict [list \
-    CONFIG.c_num_fstores {1} \
-    CONFIG.c_include_internal_genlock {0} \
+    CONFIG.c_num_fstores {3} \
+    CONFIG.c_include_internal_genlock {1} \
     CONFIG.c_m_axis_mm2s_tdata_width {16} \
     CONFIG.c_m_axi_mm2s_data_width {64} \
     CONFIG.c_m_axi_s2mm_data_width {64} \

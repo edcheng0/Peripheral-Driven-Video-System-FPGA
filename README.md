@@ -35,7 +35,7 @@ _Demo coming soon._
 - **HDMI output:** TMDS encoding, 10:1 serializers and clock generation, written from the DVI spec. Runs at 640x480, 800x600 and 1280x720.
 - **Camera input:** pixel capture and I2C-style configuration for the OV7670.
 - **Filters:** grayscale, Sobel edge detection, and invert.
-- **Frame buffer:** the camera's 640x480 frames are written to DDR3 and read back for display by a Xilinx video DMA (VDMA), with a small FIFO that absorbs short stalls. The camera, DMA and display each run on their own clock. (An earlier version used on-chip memory at 320x240.)
+- **Frame buffer:** the camera's 640x480 frames are written to DDR3 and read back for display by a Xilinx video DMA (VDMA), with a small FIFO that absorbs short stalls. Three frame buffers with genlock (the display follows the camera by whole frames) remove picture tearing. The camera, DMA and display each run on their own clock. (An earlier version used on-chip memory at 320x240.)
 - **ARM control:** a small ARM program starts the DMA, sets the filter over the serial port through an AXI GPIO block, and can read and write the camera's registers for debugging.
 - **Servo PWM:** a 50 Hz servo driver, ready for later use.
 - **Tests:** every module has a self-checking testbench, and the full HDMI output is decoded and checked in simulation.
@@ -75,5 +75,4 @@ powershell -File scripts/send_mode.ps1 2                 # filter: 0 raw, 1 gray
 
 ## Next
 
-- Remove picture tearing with triple buffering
 - More ARM control: servo, USB mouse, Ethernet

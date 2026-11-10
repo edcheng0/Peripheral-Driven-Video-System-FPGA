@@ -3,9 +3,9 @@
  *
  * What happens in hardware once this runs:
  *   - the VDMA's WRITE channel (S2MM) takes the camera's pixel stream and
- *     stores each 640x480 frame at FRAME_ADDR in DDR3 memory
- *   - the VDMA's READ channel (MM2S) reads that frame back, over and over,
- *     and feeds it to the HDMI output
+ *     stores each 640x480 frame in one of 3 buffers in DDR3 (from FRAME_ADDR)
+ *   - the VDMA READ channel (MM2S) follows the writer (genlock) and reads the newest complete frame,
+ *     so the picture does not tear, and feeds it to the HDMI output
  * The ARM only sets the VDMA up; it never touches the pixels.
  *
  * Register offsets are from Xilinx's driver header xaxivdma_hw.h:
@@ -54,6 +54,9 @@
 
 #define CR_RUN       0x1
 #define CR_CIRCULAR  0x2   /* keep going frame after frame */
+#define CR_GENLOCK   0x88  /* genlock enable (0x8) + internal genlock source (0x80): the reader follows the writer */
+#define NUM_FRAMES   3
+#define FRAME_STEP   0x00100000u   /* 1 MB between buffers (a frame is 600 KB) */
 #define CR_RESET     0x4
 #define SR_HALTED    0x1
 #define SR_ERR_MASK  0x8FF0   /* error flags (bits 4-11 and 15) */
@@ -70,8 +73,8 @@ static void reset_channel(unsigned cr)
 
 static void start_channel(unsigned cr, unsigned addr0, unsigned stride, unsigned hsize, unsigned vsize)
 {
-    wr(cr, CR_RUN | CR_CIRCULAR);
-    wr(addr0, FRAME_ADDR);
+    wr(cr, CR_RUN | CR_CIRCULAR | CR_GENLOCK);
+    for (int i = 0; i < NUM_FRAMES; i++) wr(addr0 + 4 * i, FRAME_ADDR + i * FRAME_STEP);
     wr(stride, LINE_BYTES);
     wr(hsize, LINE_BYTES);
     wr(vsize, HEIGHT);              /* writing VSIZE last starts the transfers */
