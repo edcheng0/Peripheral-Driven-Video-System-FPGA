@@ -20,16 +20,9 @@ OV7670 camera --> capture --> video DMA --> DDR3 frame buffer --> video DMA --> 
 | DDR3 frame buffer (640x480, through the ARM side's memory) | Working on hardware |
 | ARM-controlled hobby servo | Working on hardware |
 
-## Demos
+## Demo
 
-### HDMI color bars
-_Photo coming soon._
-
-### Live camera
-_Photo or video coming soon._
-
-### Filters (grayscale, edge detect, invert)
-_Demo coming soon._
+[Watch the demo video](docs/demo.mp4): live 640x480 camera video on HDMI, switching between raw, grayscale, edge detection and invert from the serial port, and the servo moving on ARM commands.
 
 ## What's inside
 
