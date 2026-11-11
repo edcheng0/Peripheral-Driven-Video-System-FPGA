@@ -29,6 +29,13 @@
 #error "VDMA base address macro not found in xparameters.h"
 #endif
 
+#ifdef ETHERNET   /* set by scripts/make_eth_sw.py: adds Ethernet video streaming (net_stream.c) */
+#include "xiltimer.h"
+#include "xtimer_config.h"
+#include "net_stream.h"
+unsigned vdma_base(void) { return VDMA_BASE; }
+#endif
+
 #define GPIO_BASE_ADDR XPAR_XGPIO_0_BASEADDR   /* AXI GPIO: display filter mode */
 #define STAT_BASE_ADDR XPAR_XGPIO_1_BASEADDR   /* AXI GPIO: camera/DMA counters (read only) */
 #define FRAME_ADDR   0x08000000u   /* 128 MB into DDR3, well away from the program */
@@ -212,7 +219,16 @@ int main(void)
                 xil_printf("reg %02x <- %02x\r\n", reg, val);
             }
         }
+#ifdef ETHERNET
+        net_poll();                                   /* network first, it must run as often as possible */
+        {   /* then run the 1 ms housekeeping below on a timer instead of a sleep */
+            static XTime next = 0; XTime t; XTime_GetTime(&t);
+            if (t < next) continue;
+            next = t + COUNTS_PER_SECOND / 1000;
+        }
+#else
         usleep(1000);
+#endif
 
         /* every millisecond: log and clear errors; restart a channel that has stopped */
         unsigned ws = rd(S2MM_SR), rs = rd(MM2S_SR);
@@ -232,6 +248,9 @@ int main(void)
         xil_printf("camera: init_done %u, unacknowledged writes %u | ", (cs >> 8) & 1, cs & 0xFF);
         xil_printf("write: errors %u last SR %08x restarts %u | read: errors %u last SR %08x restarts %u\r\n",
                    w_errs, w_last, w_restarts, r_errs, r_last, r_restarts);
+#ifdef ETHERNET
+        net_status();
+#endif
     }
     return 0;
 }
