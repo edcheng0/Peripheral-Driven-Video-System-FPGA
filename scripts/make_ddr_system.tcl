@@ -23,7 +23,7 @@ set_property board_part digilentinc.com:zybo-z7-20:part0:1.2 [current_project]
 add_files [glob rtl/*.v]
 add_files -fileset constrs_1 [list \
     constraints/zybo_clock.xdc constraints/zybo_hdmi_tx.xdc constraints/zybo_leds.xdc \
-    constraints/zybo_camera_pmod.xdc constraints/zybo_ps_clocks.xdc]
+    constraints/zybo_camera_pmod.xdc constraints/zybo_ps_clocks.xdc constraints/zybo_servo.xdc]
 update_compile_order -fileset sources_1
 
 create_bd_design system
@@ -53,7 +53,7 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 \
 
 # ARM -> 2-bit GPIO that picks the display filter
 create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio axi_gpio_0
-set_property -dict [list CONFIG.C_GPIO_WIDTH {6} CONFIG.C_ALL_OUTPUTS {1} CONFIG.C_IS_DUAL {1} CONFIG.C_GPIO2_WIDTH {10} CONFIG.C_ALL_INPUTS_2 {1}] [get_bd_cells axi_gpio_0]
+set_property -dict [list CONFIG.C_GPIO_WIDTH {14} CONFIG.C_ALL_OUTPUTS {1} CONFIG.C_IS_DUAL {1} CONFIG.C_GPIO2_WIDTH {10} CONFIG.C_ALL_INPUTS_2 {1}] [get_bd_cells axi_gpio_0]
 apply_bd_automation -rule xilinx.com:bd_rule:axi4 \
     -config {Clk_master {Auto} Clk_slave {Auto} Clk_xbar {Auto} Master {/ps7/M_AXI_GP0} Slave {/axi_gpio_0/S_AXI} intc_ip {/ps7_axi_periph} master_apply_board_params {1}} \
     [get_bd_intf_pins axi_gpio_0/S_AXI]
@@ -105,19 +105,29 @@ connect_bd_net [get_bd_pins clk_gen/locked]     [get_bd_pins vid_sink/locked]
 connect_bd_net [get_bd_pins clk_gen/locked]     [get_bd_pins cam_ctrl/locked]
 # GPIO out: bits 1:0 = display filter, bit 2 = camera re-init; GPIO in: camera status
 create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice slice_mode
-set_property -dict [list CONFIG.DIN_WIDTH {6} CONFIG.DIN_FROM {1} CONFIG.DIN_TO {0} CONFIG.DOUT_WIDTH {2}] [get_bd_cells slice_mode]
+set_property -dict [list CONFIG.DIN_WIDTH {14} CONFIG.DIN_FROM {1} CONFIG.DIN_TO {0} CONFIG.DOUT_WIDTH {2}] [get_bd_cells slice_mode]
 create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice slice_reinit
-set_property -dict [list CONFIG.DIN_WIDTH {6} CONFIG.DIN_FROM {2} CONFIG.DIN_TO {2} CONFIG.DOUT_WIDTH {1}] [get_bd_cells slice_reinit]
+set_property -dict [list CONFIG.DIN_WIDTH {14} CONFIG.DIN_FROM {2} CONFIG.DIN_TO {2} CONFIG.DOUT_WIDTH {1}] [get_bd_cells slice_reinit]
 connect_bd_net [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins slice_mode/Din]
 connect_bd_net [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins slice_reinit/Din]
 connect_bd_net [get_bd_pins slice_mode/Dout]   [get_bd_pins vid_sink/mode]
 connect_bd_net [get_bd_pins slice_reinit/Dout] [get_bd_pins cam_ctrl/reinit]
 foreach {nm bit pin} {slice_own 3 arm_own slice_scl 4 arm_scl_low slice_sda 5 arm_sda_low} {
     create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice $nm
-    set_property -dict [list CONFIG.DIN_WIDTH {6} CONFIG.DIN_FROM $bit CONFIG.DIN_TO $bit CONFIG.DOUT_WIDTH {1}] [get_bd_cells $nm]
+    set_property -dict [list CONFIG.DIN_WIDTH {14} CONFIG.DIN_FROM $bit CONFIG.DIN_TO $bit CONFIG.DOUT_WIDTH {1}] [get_bd_cells $nm]
     connect_bd_net [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins $nm/Din]
     connect_bd_net [get_bd_pins $nm/Dout] [get_bd_pins cam_ctrl/$pin]
 }
+# servo: GPIO output bits 13:6 = position (0..255 = 1..2 ms pulse), PWM out on Pmod JE1
+create_bd_cell -type module -reference servo_ctrl servo
+create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice slice_servo
+set_property -dict [list CONFIG.DIN_WIDTH {14} CONFIG.DIN_FROM {13} CONFIG.DIN_TO {6} CONFIG.DOUT_WIDTH {8}] [get_bd_cells slice_servo]
+connect_bd_net [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins slice_servo/Din]
+connect_bd_net [get_bd_pins slice_servo/Dout]     [get_bd_pins servo/position]
+connect_bd_net [get_bd_ports sysclk]              [get_bd_pins servo/clk]
+create_bd_port -dir O servo
+connect_bd_net [get_bd_pins servo/pwm] [get_bd_ports servo]
+
 create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat concat_stat
 set_property -dict [list CONFIG.NUM_PORTS {3} CONFIG.IN0_WIDTH {8} CONFIG.IN1_WIDTH {1} CONFIG.IN2_WIDTH {1}] [get_bd_cells concat_stat]
 connect_bd_net [get_bd_pins cam_ctrl/ack_errs]  [get_bd_pins concat_stat/In0]

@@ -18,6 +18,7 @@ OV7670 camera --> capture --> video DMA --> DDR3 frame buffer --> video DMA --> 
 | Camera capture, frame buffer, and filters (gray, edges, invert) | Working on hardware |
 | ARM processor control of the filter mode over serial | Working on hardware (serial replies verified; filters confirmed on screen) |
 | DDR3 frame buffer (640x480, through the ARM side's memory) | Working on hardware |
+| ARM-controlled hobby servo | Working on hardware |
 
 ## Demos
 
@@ -37,7 +38,7 @@ _Demo coming soon._
 - **Filters:** grayscale, Sobel edge detection, and invert.
 - **Frame buffer:** the camera's 640x480 frames are written to DDR3 and read back for display by a Xilinx video DMA (VDMA), with a small FIFO that absorbs short stalls. Three frame buffers with genlock (the display follows the camera by whole frames) remove picture tearing. The camera, DMA and display each run on their own clock. (An earlier version used on-chip memory at 320x240.)
 - **ARM control:** a small ARM program starts the DMA, sets the filter over the serial port through an AXI GPIO block, and can read and write the camera's registers for debugging.
-- **Servo PWM:** a 50 Hz servo driver, ready for later use.
+- **Servo:** a 50 Hz servo PWM driver on a Pmod pin, positioned by the ARM program through the same GPIO block (serial keys `sHH` for a position and `S` for a sweep). The servo is powered from a separate 5 V supply that shares ground with the board.
 - **Tests:** every module has a self-checking testbench, and the full HDMI output is decoded and checked in simulation.
 
 ## Folders
@@ -75,4 +76,4 @@ powershell -File scripts/send_mode.ps1 2                 # filter: 0 raw, 1 gray
 
 ## Next
 
-- More ARM control: servo, USB mouse, Ethernet
+- More ARM control: USB mouse, Ethernet

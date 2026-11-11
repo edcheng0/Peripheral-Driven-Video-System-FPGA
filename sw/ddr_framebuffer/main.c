@@ -81,7 +81,7 @@ static void start_channel(unsigned cr, unsigned addr0, unsigned stride, unsigned
 }
 
 /* ---- camera register access: the ARM wiggles the camera's SCCB (I2C-like) pins itself ----
- * GPIO output bits: [1:0] display mode, [2] camera re-init, [3] ARM owns the bus,
+ * GPIO output bits: [13:6] servo position, [1:0] display mode, [2] camera re-init, [3] ARM owns the bus,
  *                   [4] pull SCL low, [5] pull SDA low.   GPIO input bit 9 = SDA level. */
 static unsigned gpio_out = 0;
 static void gpio_set(unsigned v) { gpio_out = v; Xil_Out32(GPIO_BASE_ADDR, v); }
@@ -157,8 +157,8 @@ int main(void)
     start_channel(S2MM_CR, S2MM_ADDR0, S2MM_STRIDE, S2MM_HSIZE, S2MM_VSIZE);
     start_channel(MM2S_CR, MM2S_ADDR0, MM2S_STRIDE, MM2S_HSIZE, MM2S_VSIZE);
 
-    gpio_set(0);
-    xil_printf("Keys: 0-3 filter | r re-send camera settings | d dump camera registers | gHH read reg | wHHVV write reg\r\n");
+    gpio_set(128u << 6);                      /* servo to the middle, filter raw */
+    xil_printf("Keys: 0-3 filter | r re-send camera settings | d dump camera registers | gHH read reg | wHHVV write reg | sHH servo position | S servo sweep\r\n");
 
     int ticks = 0;
     unsigned w_errs = 0, r_errs = 0, w_restarts = 0, r_restarts = 0, w_last = 0, r_last = 0;
@@ -173,6 +173,16 @@ int main(void)
                 xil_printf("camera re-init requested\r\n");
             }
             if (c == 'd') cam_dump();
+            if (c == 's') {
+                unsigned v = hex_byte();
+                gpio_set((gpio_out & ~(0xFFu << 6)) | (v << 6));
+                xil_printf("servo position = %u (0..255)\r\n", v);
+            }
+            if (c == 'S') {                           /* sweep once: one end, to the other, and back to the middle */
+                for (int v = 0; v <= 255; v += 5) { gpio_set((gpio_out & ~(0xFFu << 6)) | ((unsigned)v << 6)); usleep(40000); }
+                for (int v = 255; v >= 128; v -= 5) { gpio_set((gpio_out & ~(0xFFu << 6)) | ((unsigned)v << 6)); usleep(40000); }
+                xil_printf("servo sweep done\r\n");
+            }
             if (c == 'p') {
                 gpio_set(gpio_out | 8);
                 unsigned before = Xil_In32(GPIO_BASE_ADDR + 8);
