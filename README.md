@@ -22,7 +22,9 @@ OV7670 camera --> capture --> video DMA --> DDR3 frame buffer --> video DMA --> 
 
 ## Demo
 
-[Watch the demo video](docs/demo.mp4): live 640x480 camera video on HDMI, switching between raw, grayscale, edge detection and invert from the serial port, and the servo moving on ARM commands.
+<video src="https://github.com/edcheng0/Peripheral-Driven-Video-System-FPGA/raw/master/docs/demo.mp4" controls muted width="100%"></video>
+
+Demo: live 640x480 camera video on HDMI, switching between raw, grayscale, edge detection and invert from the serial port, and the servo moving on ARM commands.
 
 ## What's inside
 
